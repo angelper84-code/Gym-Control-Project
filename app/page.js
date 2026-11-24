@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Users, DollarSign, TrendingDown, RefreshCw, Plus, CheckCircle, AlertTriangle, XCircle, Settings, Wallet } from 'lucide-react';
+import { Users, TrendingDown, Settings, Wallet } from 'lucide-react';
 
 export default function GymControlApp() {
   const [tab, setTab] = useState('resumen');
@@ -348,5 +348,62 @@ export default function GymControlApp() {
                   <div style={{ fontSize: 11, color: '#94a3b8' }}>{g.metodo_pago}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700,
-      
+                  <div style={{ fontWeight: 700, color: '#f87171' }}>-${Number(g.monto_usd).toFixed(2)}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{Number(g.monto_bs).toLocaleString('es-VE')} Bs</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PESTAÑA 4: AJUSTES (TASA Y PRECIOS DE PLANES) */}
+      {tab === 'ajustes' && (
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div style={{ background: '#1e293b', padding: 16, borderRadius: 14 }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 15 }}>Actualizar Tasa del Día (Bs/$)</h3>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input type="number" step="0.01" value={nuevaTasa} onChange={(e) => setNuevaTasa(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+              <button onClick={guardarTasa} style={btnPrimary}>Guardar Tasa</button>
+            </div>
+          </div>
+
+          <div style={{ background: '#1e293b', padding: 16, borderRadius: 14 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Editar Precios de Planes</h3>
+            {planes.map((pl) => (
+              <div key={pl.id} style={{ padding: '12px 0', borderBottom: '1px solid #334155' }}>
+                {editandoPlan?.id === pl.id ? (
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <input value={editandoPlan.nombre} onChange={(e) => setEditandoPlan({ ...editandoPlan, nombre: e.target.value })} style={inputStyle} />
+                    <input type="number" step="0.01" value={editandoPlan.precio_usd} onChange={(e) => setEditandoPlan({ ...editandoPlan, precio_usd: e.target.value })} style={inputStyle} />
+                    <button onClick={() => guardarPlan(editandoPlan)} style={btnPrimary}>Guardar Cambios</button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{pl.nombre} ({pl.duracion_dias} días)</div>
+                      <div style={{ fontSize: 13, color: '#10b981' }}>${Number(pl.precio_usd).toFixed(2)} • {(pl.precio_usd * config.tasa_bcv).toFixed(2)} Bs</div>
+                    </div>
+                    <button onClick={() => setEditandoPlan(pl)} style={{ background: '#334155', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8 }}>Editar</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* BARRA DE NAVEGACIÓN INFERIOR */}
+      <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#1e293b', borderTop: '1px solid #334155', display: 'flex', justifyContent: 'space-around', padding: '10px 0' }}>
+        <button onClick={() => setTab('resumen')} style={navBtn(tab === 'resumen')}><Wallet size={20} /><span>Resumen</span></button>
+        <button onClick={() => setTab('socios')} style={navBtn(tab === 'socios')}><Users size={20} /><span>Socios</span></button>
+        <button onClick={() => setTab('gastos')} style={navBtn(tab === 'gastos')}><TrendingDown size={20} /><span>Gastos</span></button>
+        <button onClick={() => setTab('ajustes')} style={navBtn(tab === 'ajustes')}><Settings size={20} /><span>Ajustes</span></button>
+      </nav>
+    </div>
+  );
+}
+
+const inputStyle = { width: '100%', padding: '12px', borderRadius: 10, border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: 14, boxSizing: 'border-box' };
+const btnPrimary = { background: '#10b981', color: '#0f172a', border: 'none', padding: '12px 16px', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: 'pointer' };
+const navBtn = (active) => ({ background: 'none', border: 'none', color: active ? '#38bdf8' : '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: active ? 700 : 400 });
