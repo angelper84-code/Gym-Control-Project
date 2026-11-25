@@ -13,1749 +13,1139 @@ import {
   X,
   Plus,
   Edit3,
+  Layers,
+  Home,
+  MessageCircle,
+  ShieldCheck,
 } from 'lucide-react';
 
-export default function GymControlApp() {
-  const [tab, setTab] = useState('resumen');
-  const [loading, setLoading] = useState(true);
-  const [sincronizandoTasa, setSincronizandoTasa] = useState(false);
-  const [toast, setToast] = useState(null);
+function KovaLogoMark({ size = 34 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 120 120"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="Isotipo Kova Gym"
+      style={{ display: 'block', flexShrink: 0 }}
+    >
+      <defs>
+        <linearGradient id="kovaOceanGrad" x1="18" y1="20" x2="96" y2="98" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#0EA5E9" />
+          <stop offset="55%" stopColor="#0284C7" />
+          <stop offset="100%" stopColor="#0369A1" />
+        </linearGradient>
+        <linearGradient id="kovaGraphiteGrad" x1="48" y1="36" x2="102" y2="96" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#4B5563" />
+          <stop offset="100%" stopColor="#272D36" />
+        </linearGradient>
+      </defs>
+      {/* Trazo vertical y diagonal superior de la K */}
+      <path
+        d="M24 22H38V53L76 22H95L48 60L96 98H76L38 67V98H24V22Z"
+        fill="url(#kovaOceanGrad)"
+      />
+      {/* Curva superior y brazo de la G */}
+      <path
+        d="M54 44C63 36 78 35 90 42C97 46 102 53 104 61H88C85 55 79 51 72 51C65 51 59 54 55 59L47 52C49 49 51 46 54 44Z"
+        fill="url(#kovaGraphiteGrad)"
+      />
+      <path
+        d="M64 64H104C104 82 90 96 72 96C62 96 54 92 48 85L59 75C62 79 67 82 72 82C81 82 88 76 89 68H64V64Z"
+        fill="url(#kovaGraphiteGrad)"
+      />
+    </svg>
+  );
+        }
+      export default function GymControlApp() {
+  const [tab, setTab] = useState('inicio');
+  const [theme, setTheme] = useState('dark');
+  const [tasaBs, setTasaBs] = useState(45.5);
+  const [tasaInput, setTasaInput] = useState('45.50');
+  const [diasAviso, setDiasAviso] = useState(5);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState('');
 
-  const [config, setConfig] = useState({
-    id: 1,
-    nombre_gimnasio: 'GymControl Pro',
-    tasa_bcv: null,
-    actualizado_en: null,
-  });
-  const [inputTasa, setInputTasa] = useState('');
-  const [editandoTasaRapida, setEditandoTasaRapida] = useState(false);
-
+  const [miembros, setMiembros] = useState([]);
   const [planes, setPlanes] = useState([]);
-  const [socios, setSocios] = useState([]);
-  const [pagos, setPagos] = useState([]);
   const [gastos, setGastos] = useState([]);
+  const [asistencias, setAsistencias] = useState([]);
 
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('todos');
-  const [nuevoSocio, setNuevoSocio] = useState({
+  const [checkinQuery, setCheckinQuery] = useState('');
+  const [checkinResultado, setCheckinResultado] = useState(null);
+  const [busquedaMiembro, setBusquedaMiembro] = useState('');
+
+  const [modalMiembro, setModalMiembro] = useState(false);
+  const [nuevoMiembro, setNuevoMiembro] = useState({
+    nombre: '',
     cedula: '',
-    nombre_completo: '',
     telefono: '',
-    plan_id: '',
+    planId: '',
+    fechaPago: new Date().toISOString().slice(0, 10),
   });
-  const [cobroModal, setCobroModal] = useState(null);
-  const [datosCobro, setDatosCobro] = useState({
-    plan_id: '',
-    metodo_pago: 'Pago Móvil',
-    referencia: '',
-  });
+
+  const [nuevoPlan, setNuevoPlan] = useState({ nombre: '', precioUsd: '' });
+  const [editPlanId, setEditPlanId] = useState(null);
+  const [editPlanData, setEditPlanData] = useState({ nombre: '', precioUsd: '' });
+
   const [nuevoGasto, setNuevoGasto] = useState({
     concepto: '',
-    monto_usd: '',
-    metodo_pago: 'Efectivo USD',
+    categoria: 'Operación',
+    montoUsd: '',
+    fecha: new Date().toISOString().slice(0, 10),
   });
-  const [editandoPlan, setEditandoPlan] = useState(null);
 
-  function notificar(mensaje, tipo = 'ok') {
-    setToast({ mensaje, tipo });
-    setTimeout(() => {
-      setToast(null);
-    }, 3200);
-  }
+  const [infoSistema] = useState({
+    marca: 'Kova Gym',
+    desarrollador: 'Angel Perdomo',
+    version: 'v1.0',
+  });
 
-  async function consultarTasaBCVAutomatica() {
-    const endpoints = [
-      {
-        url: 'https://ve.dolarapi.com/v1/dolares/oficial',
-        extraer: (d) => d?.promedio ?? d?.venta ?? d?.compra,
-      },
-      {
-        url: 'https://pydolarve.org/api/v1/dollar?page=bcv',
-        extraer: (d) => d?.monitors?.usd?.price ?? d?.price,
-      },
-    ];
+  const isDark = theme === 'dark';
 
-    for (const fuente of endpoints) {
-      try {
-        const res = await fetch(fuente.url, { cache: 'no-store' });
-        if (!res.ok) continue;
-        const data = await res.json();
-        const valor = parseFloat(fuente.extraer(data));
-        if (valor && !Number.isNaN(valor) && valor > 10) {
-          return Number(valor.toFixed(2));
-        }
-      } catch {}
-    }
-    return null;
-      }
-    async function sincronizarTasa(forzarGuardar = true) {
-    setSincronizandoTasa(true);
-    const tasaDetectada = await consultarTasaBCVAutomatica();
-    setSincronizandoTasa(false);
+  const notificar = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3200);
+  };
 
-    if (tasaDetectada) {
-      setInputTasa(String(tasaDetectada));
-      if (forzarGuardar) {
-        const ahora = new Date().toISOString();
-        const { error } = await supabase
-          .from('configuracion')
-          .upsert(
-            {
-              id: 1,
-              nombre_gimnasio: config.nombre_gimnasio || 'GymControl Pro',
-              tasa_bcv: tasaDetectada,
-              actualizado_en: ahora,
-            },
-            { onConflict: 'id' }
-          );
+  const sumar30Dias = (fechaStr) => {
+    const base = fechaStr ? new Date(`${fechaStr}T12:00:00`) : new Date();
+    const vence = new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000);
+    return vence.toISOString().slice(0, 10);
+  };
 
-        if (!error) {
-          setConfig((prev) => ({
-            ...prev,
-            tasa_bcv: tasaDetectada,
-            actualizado_en: ahora,
-          }));
-          notificar(`Tasa BCV actualizada: ${tasaDetectada.toFixed(2)} Bs/$`);
-          return;
-        }
-      }
-      setConfig((prev) => ({ ...prev, tasa_bcv: tasaDetectada }));
-      notificar(`Tasa BCV detectada: ${tasaDetectada.toFixed(2)} Bs/$`);
-    } else {
-      setEditandoTasaRapida(true);
-      notificar(
-        'No se pudo consultar la tasa automáticamente. Ingrésala manualmente.',
-        'aviso'
-      );
-    }
-  }
+  const diasRestantes = (fechaVenc) => {
+    if (!fechaVenc) return -999;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fin = new Date(`${fechaVenc.slice(0, 10)}T00:00:00`);
+    return Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+  };
 
-  async function cargarTodo() {
-    setLoading(true);
-    const [resConfig, resPlanes, resSocios, resPagos, resGastos] =
-      await Promise.all([
-        supabase.from('configuracion').select('*').eq('id', 1).maybeSingle(),
-        supabase
-          .from('planes')
-          .select('*')
-          .order('precio_usd', { ascending: false }),
-        supabase
-          .from('socios')
-          .select('*, planes(nombre, precio_usd, duracion_dias)')
-          .order('creado_en', { ascending: false }),
-        supabase
-          .from('pagos')
-          .select('*, socios(nombre_completo), planes(nombre)')
-          .order('fecha_pago', { ascending: false })
-          .limit(50),
-        supabase
-          .from('gastos')
-          .select('*')
-          .order('fecha_gasto', { ascending: false })
-          .limit(50),
-      ]);
-
-    let tasaActual = null;
-    if (resConfig.data) {
-      setConfig(resConfig.data);
-      if (resConfig.data.tasa_bcv && Number(resConfig.data.tasa_bcv) > 0) {
-        tasaActual = Number(resConfig.data.tasa_bcv);
-        setInputTasa(String(tasaActual));
-      }
-    }
-
-    if (resPlanes.data) {
-      setPlanes(resPlanes.data);
-      if (resPlanes.data.length > 0) {
-        setNuevoSocio((prev) => ({
-          ...prev,
-          plan_id: prev.plan_id || resPlanes.data[0].id,
-        }));
-      }
-    }
-    if (resSocios.data) setSocios(resSocios.data);
-    if (resPagos.data) setPagos(resPagos.data);
-    if (resGastos.data) setGastos(resGastos.data);
-
-    setLoading(false);
-
-    const autoTasa = await consultarTasaBCVAutomatica();
-    if (autoTasa) {
-      setInputTasa(String(autoTasa));
-      if (autoTasa !== tasaActual) {
-        const ahora = new Date().toISOString();
-        await supabase
-          .from('configuracion')
-          .upsert(
-            {
-              id: 1,
-              nombre_gimnasio: resConfig.data?.nombre_gimnasio || 'GymControl Pro',
-              tasa_bcv: autoTasa,
-              actualizado_en: ahora,
-            },
-            { onConflict: 'id' }
-          );
-        setConfig((prev) => ({
-          ...prev,
-          tasa_bcv: autoTasa,
-          actualizado_en: ahora,
-        }));
-      }
-    } else if (!tasaActual) {
-      setEditandoTasaRapida(true);
-    }
-  }
-
-  useEffect(() => {
-    cargarTodo();
-  }, []);
-
-  const tasaActiva =
-    config.tasa_bcv && Number(config.tasa_bcv) > 0
-      ? Number(config.tasa_bcv)
-      : parseFloat(inputTasa) || 0;
-
-  function formatBs(montoUsd) {
-    if (!tasaActiva) return 'Sin tasa';
-    const total = Number(montoUsd || 0) * tasaActiva;
-    return `${total.toLocaleString('es-VE', {
+  const fmtUsd = (val) => `$${Number(val || 0).toFixed(2)}`;
+  const fmtBs = (usdVal) =>
+    `Bs. ${(Number(usdVal || 0) * Number(tasaBs || 0)).toLocaleString('es-VE', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    })} Bs`;
-  }
+    })}`;
 
-  function obtenerEstadoSemaforo(fechaVencimiento) {
-    if (!fechaVencimiento) {
-      return {
-        label: 'Sin plan',
-        color: '#f87171',
-        bg: 'rgba(248, 113, 113, 0.12)',
-        border: 'rgba(248, 113, 113, 0.28)',
-        tipo: 'vencido',
-      };
-    }
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const vence = new Date(fechaVencimiento + 'T00:00:00');
-    const diffDias = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
-
-    if (diffDias < 0) {
-      return {
-        label: `Vencido hace ${Math.abs(diffDias)}d`,
-        color: '#f87171',
-        bg: 'rgba(248, 113, 113, 0.12)',
-        border: 'rgba(248, 113, 113, 0.28)',
-        tipo: 'vencido',
-      };
-    }
-    if (diffDias <= 3) {
-      return {
-        label: diffDias === 0 ? 'Vence hoy' : `Vence en ${diffDias}d`,
-        color: '#fbbf24',
-        bg: 'rgba(251, 191, 36, 0.12)',
-        border: 'rgba(251, 191, 36, 0.28)',
-        tipo: 'por_vencer',
-      };
-    }
-    return {
-      label: `Al día (${diffDias}d)`,
-      color: '#34d399',
-      bg: 'rgba(52, 211, 153, 0.12)',
-      border: 'rgba(52, 211, 153, 0.28)',
-      tipo: 'activo',
-    };
-  }
-
-  async function guardarTasaManual(e) {
+  const aplicarTasa = (e) => {
     if (e) e.preventDefault();
-    const valor = parseFloat(String(inputTasa).replace(',', '.'));
-    if (!valor || Number.isNaN(valor) || valor <= 0) {
-      notificar('Ingresa un valor de tasa válido', 'aviso');
+    const parsed = parseFloat(String(tasaInput).replace(',', '.'));
+    if (!parsed || parsed <= 0) {
+      notificar('Ingresa una tasa válida mayor a 0');
       return;
     }
-    const ahora = new Date().toISOString();
-    const { error } = await supabase
-      .from('configuracion')
-      .upsert(
-        {
-          id: 1,
-          nombre_gimnasio: config.nombre_gimnasio || 'GymControl Pro',
-          tasa_bcv: valor,
-          actualizado_en: ahora,
-        },
-        { onConflict: 'id' }
+    setTasaBs(parsed);
+    setTasaInput(parsed.toFixed(2));
+    notificar(`Tasa actualizada a Bs. ${parsed.toFixed(2)} / $`);
+  };
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const [mRes, pRes, gRes, aRes] = await Promise.all([
+        supabase.from('miembros').select('*').order('created_at', { ascending: false }),
+        supabase.from('planes').select('*').order('precio_usd', { ascending: true }),
+        supabase.from('gastos').select('*').order('fecha', { ascending: false }),
+        supabase.from('asistencias').select('*').order('created_at', { ascending: false }).limit(20),
+      ]);
+
+      const planesList = pRes.data || [];
+      setPlanes(planesList);
+      if (planesList.length > 0 && !nuevoMiembro.planId) {
+        setNuevoMiembro((prev) => ({ ...prev, planId: planesList[0].id }));
+      }
+
+      setMiembros(
+        (mRes.data || []).map((m) => ({
+          id: m.id,
+          nombre: m.nombre || '',
+          cedula: m.cedula || '',
+          telefono: m.telefono || '',
+          planId: m.plan_id,
+          planNombre: m.plan_nombre || 'Plan Mensual',
+          montoUsd: Number(m.monto_usd || 0),
+          ultimoPago: m.ultimo_pago || new Date().toISOString().slice(0, 10),
+          venceEl: m.vence_el || sumar30Dias(m.ultimo_pago),
+        }))
       );
 
-    if (error) {
-      notificar('Error al guardar la tasa: ' + error.message, 'aviso');
+      setGastos(
+        (gRes.data || []).map((g) => ({
+          id: g.id,
+          concepto: g.concepto || '',
+          categoria: g.categoria || 'Operación',
+          montoUsd: Number(g.monto_usd || 0),
+          fecha: g.fecha || new Date().toISOString().slice(0, 10),
+        }))
+      );
+
+      setAsistencias(aRes.data || []);
+    } catch (err) {
+      notificar('Revisa la conexión o permisos RLS en Supabase');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+        const buscarCheckin = (e) => {
+    if (e) e.preventDefault();
+    const q = checkinQuery.trim().toLowerCase();
+    if (!q) {
+      setCheckinResultado(null);
       return;
     }
-
-    setConfig((prev) => ({ ...prev, tasa_bcv: valor, actualizado_en: ahora }));
-    setInputTasa(String(valor));
-    setEditandoTasaRapida(false);
-    notificar(`Tasa guardada: ${valor.toFixed(2)} Bs/$`);
-  }
-
-  async function registrarSocio(e) {
-    e.preventDefault();
-    if (!nuevoSocio.cedula.trim() || !nuevoSocio.nombre_completo.trim()) {
-      notificar('Cédula y nombre son obligatorios', 'aviso');
+    const encontrado = miembros.find(
+      (m) =>
+        m.nombre.toLowerCase().includes(q) ||
+        String(m.cedula || '').toLowerCase().includes(q) ||
+        String(m.telefono || '').toLowerCase().includes(q)
+    );
+    if (!encontrado) {
+      setCheckinResultado({ ok: false, mensaje: 'No se encontró ningún miembro con ese dato.' });
       return;
     }
+    const dias = diasRestantes(encontrado.venceEl);
+    if (dias < 0) {
+      setCheckinResultado({
+        ok: false,
+        miembro: encontrado,
+        dias,
+        mensaje: `Membresía vencida hace ${Math.abs(dias)} día(s). Requiere renovación.`,
+      });
+    } else {
+      setCheckinResultado({
+        ok: true,
+        miembro: encontrado,
+        dias,
+        mensaje: `Acceso permitido · ${dias === 0 ? 'Vence hoy' : `${dias} día(s) restantes`}.`,
+      });
+    }
+  };
 
-    const planElegido = planes.find((p) => p.id === nuevoSocio.plan_id);
-    const hoy = new Date();
-    const vence = new Date();
-    vence.setDate(hoy.getDate() + (planElegido ? planElegido.duracion_dias : 30));
-
-    const { data: socioCreado, error } = await supabase
-      .from('socios')
-      .insert([
+  const registrarAsistencia = async (miembro) => {
+    if (!miembro) return;
+    if (diasRestantes(miembro.venceEl) < 0) {
+      notificar('No se puede registrar entrada: la membresía está vencida.');
+      return;
+    }
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const horaStr = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+    const nuevaEntrada = {
+      id: Date.now(),
+      miembro_id: miembro.id,
+      nombre: miembro.nombre,
+      fecha: hoyStr,
+      hora: horaStr,
+      created_at: new Date().toISOString(),
+    };
+    setAsistencias((prev) => [nuevaEntrada, ...prev.slice(0, 19)]);
+    notificar(`Check-in registrado para ${miembro.nombre}`);
+    try {
+      await supabase.from('asistencias').insert([
         {
-          cedula: nuevoSocio.cedula.trim(),
-          nombre_completo: nuevoSocio.nombre_completo.trim(),
-          telefono: nuevoSocio.telefono.trim(),
-          plan_id: nuevoSocio.plan_id || null,
-          fecha_inicio: hoy.toISOString().split('T')[0],
-          fecha_vencimiento: vence.toISOString().split('T')[0],
-          estado: 'activo',
-        },
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      notificar('Error al registrar: ' + error.message, 'aviso');
-      return;
-    }
-
-    if (planElegido && socioCreado) {
-      const montoUsd = Number(planElegido.precio_usd || 0);
-      await supabase.from('pagos').insert([
-        {
-          socio_id: socioCreado.id,
-          plan_id: planElegido.id,
-          monto_usd: montoUsd,
-          tasa_bcv_aplicada: tasaActiva || 0,
-          monto_bs: Number((montoUsd * (tasaActiva || 0)).toFixed(2)),
-          metodo_pago: 'Efectivo USD',
-          referencia: 'Inscripción inicial',
+          miembro_id: miembro.id,
+          nombre: miembro.nombre,
+          fecha: hoyStr,
+          hora: horaStr,
         },
       ]);
-    }
+    } catch (_) {}
+  };
 
-    setNuevoSocio({
-      cedula: '',
-      nombre_completo: '',
-      telefono: '',
-      plan_id: planes[0]?.id || '',
-    });
-    await cargarTodo();
-    notificar('Socio registrado correctamente');
-  }
-
-  async function procesarCobro(e) {
+  const crearMiembro = async (e) => {
     e.preventDefault();
-    const plan = planes.find((p) => p.id === datosCobro.plan_id);
-    if (!plan || !cobroModal) return;
-
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const vencActual = cobroModal.fecha_vencimiento
-      ? new Date(cobroModal.fecha_vencimiento + 'T00:00:00')
-      : null;
-
-    const baseFecha = vencActual && vencActual >= hoy ? vencActual : hoy;
-    baseFecha.setDate(baseFecha.getDate() + Number(plan.duracion_dias || 30));
-    const nuevaFechaVenc = baseFecha.toISOString().split('T')[0];
-
-    const montoUsd = Number(plan.precio_usd || 0);
-
-    await supabase.from('pagos').insert([
-      {
-        socio_id: cobroModal.id,
-        plan_id: plan.id,
-        monto_usd: montoUsd,
-        tasa_bcv_aplicada: tasaActiva || 0,
-        monto_bs: Number((montoUsd * (tasaActiva || 0)).toFixed(2)),
-        metodo_pago: datosCobro.metodo_pago,
-        referencia: datosCobro.referencia.trim(),
-      },
-    ]);
-
-    await supabase
-      .from('socios')
-      .update({
-        plan_id: plan.id,
-        fecha_vencimiento: nuevaFechaVenc,
-        estado: 'activo',
-      })
-      .eq('id', cobroModal.id);
-
-    setCobroModal(null);
-    setDatosCobro({ plan_id: '', metodo_pago: 'Pago Móvil', referencia: '' });
-    await cargarTodo();
-    notificar('Cobro registrado y plan renovado');
-  }
-
-  async function registrarGasto(e) {
-    e.preventDefault();
-    const usd = parseFloat(String(nuevoGasto.monto_usd).replace(',', '.'));
-    if (!nuevoGasto.concepto.trim() || !usd || usd <= 0) {
-      notificar('Indica el concepto y un monto válido', 'aviso');
+    if (!nuevoMiembro.nombre.trim()) {
+      notificar('Escribe el nombre del miembro');
       return;
     }
+    const planSel = planes.find((p) => String(p.id) === String(nuevoMiembro.planId)) || planes[0];
+    const fechaPago = nuevoMiembro.fechaPago || new Date().toISOString().slice(0, 10);
+    const venceEl = sumar30Dias(fechaPago);
+    const payload = {
+      nombre: nuevoMiembro.nombre.trim(),
+      cedula: nuevoMiembro.cedula.trim(),
+      telefono: nuevoMiembro.telefono.trim(),
+      plan_id: planSel ? planSel.id : null,
+      plan_nombre: planSel ? planSel.nombre : 'Plan Mensual',
+      monto_usd: planSel ? Number(planSel.precio_usd || 0) : 0,
+      ultimo_pago: fechaPago,
+      vence_el: venceEl,
+    };
 
-    await supabase.from('gastos').insert([
-      {
-        concepto: nuevoGasto.concepto.trim(),
-        monto_usd: usd,
-        tasa_bcv_aplicada: tasaActiva || 0,
-        monto_bs: Number((usd * (tasaActiva || 0)).toFixed(2)),
-        metodo_pago: nuevoGasto.metodo_pago,
-      },
-    ]);
+    try {
+      const { data, error } = await supabase.from('miembros').insert([payload]).select().single();
+      if (error) throw error;
+      setMiembros((prev) => [
+        {
+          id: data.id,
+          nombre: data.nombre,
+          cedula: data.cedula || '',
+          telefono: data.telefono || '',
+          planId: data.plan_id,
+          planNombre: data.plan_nombre,
+          montoUsd: Number(data.monto_usd || 0),
+          ultimoPago: data.ultimo_pago,
+          venceEl: data.vence_el,
+        },
+        ...prev,
+      ]);
+      setModalMiembro(false);
+      setNuevoMiembro({
+        nombre: '',
+        cedula: '',
+        telefono: '',
+        planId: planes[0]?.id || '',
+        fechaPago: new Date().toISOString().slice(0, 10),
+      });
+      notificar(`${data.nombre} registrado · Ciclo de 30 días activo`);
+    } catch (err) {
+      notificar('Error al guardar miembro en Supabase');
+    }
+  };
 
-    setNuevoGasto({ concepto: '', monto_usd: '', metodo_pago: 'Efectivo USD' });
-    await cargarTodo();
-    notificar('Gasto registrado');
-  }
+  const renovarMiembro = async (miembro) => {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const base = diasRestantes(miembro.venceEl) >= 0 ? miembro.venceEl : hoy;
+    const nuevaFechaVenc = sumar30Dias(base);
+    try {
+      const { error } = await supabase
+        .from('miembros')
+        .update({ ultimo_pago: hoy, vence_el: nuevaFechaVenc })
+        .eq('id', miembro.id);
+      if (error) throw error;
+      setMiembros((prev) =>
+        prev.map((m) =>
+          m.id === miembro.id ? { ...m, ultimoPago: hoy, venceEl: nuevaFechaVenc } : m
+        )
+      );
+      if (checkinResultado?.miembro?.id === miembro.id) {
+        setCheckinResultado({
+          ok: true,
+          miembro: { ...miembro, ultimoPago: hoy, venceEl: nuevaFechaVenc },
+          dias: diasRestantes(nuevaFechaVenc),
+          mensaje: 'Membresía renovada por 30 días adicionales.',
+        });
+      }
+      notificar(`Membresía renovada (+30 días) para ${miembro.nombre}`);
+    } catch (err) {
+      notificar('No se pudo renovar en Supabase');
+    }
+  };
 
-  async function guardarPlan(plan) {
-    await supabase
-      .from('planes')
-      .update({
-        nombre: plan.nombre.trim(),
-        precio_usd: parseFloat(plan.precio_usd),
-        duracion_dias: parseInt(plan.duracion_dias, 10),
-      })
-      .eq('id', plan.id);
-    setEditandoPlan(null);
-    await cargarTodo();
-    notificar('Plan actualizado');
-  }
-
-  const sociosConEstado = socios.map((s) => ({
-    ...s,
-    sem: obtenerEstadoSemaforo(s.fecha_vencimiento),
-  }));
-
-  const sociosAlDia = sociosConEstado.filter((s) => s.sem.tipo !== 'vencido');
-  const sociosVencidos = sociosConEstado.filter((s) => s.sem.tipo === 'vencido');
-  const carteraActivaUsd = sociosAlDia.reduce(
-    (acc, s) => acc + Number(s.planes?.precio_usd || 0),
-    0
-  );
-  const totalCobradoUsd = pagos.reduce(
-    (acc, p) => acc + Number(p.monto_usd || 0),
-    0
-  );
-  const totalGastosUsd = gastos.reduce(
-    (acc, g) => acc + Number(g.monto_usd || 0),
-    0
-  );
-  const balanceCajaUsd = totalCobradoUsd - totalGastosUsd;
-
-  const sociosFiltrados = sociosConEstado.filter((s) => {
-    const coincideTexto =
-      s.nombre_completo.toLowerCase().includes(busqueda.toLowerCase()) ||
-      String(s.cedula).toLowerCase().includes(busqueda.toLowerCase());
-    if (!coincideTexto) return false;
-    if (filtroEstado === 'todos') return true;
-    return s.sem.tipo === filtroEstado;
-  });
-
-  if (loading) {
-    return (
-      <div style={styles.pantallaCarga}>
-        <div style={styles.spinnerDot} />
-        <span style={{ color: '#9aa5b8', fontSize: 14 }}>
-          Cargando panel...
-        </span>
-      </div>
+  const abrirWhatsApp = (miembro) => {
+    const tel = String(miembro.telefono || '').replace(/\D/g, '');
+    const dias = diasRestantes(miembro.venceEl);
+    const estadoTexto =
+      dias < 0
+        ? `venció hace ${Math.abs(dias)} día(s)`
+        : dias === 0
+        ? 'vence hoy'
+        : `vence en ${dias} día(s) (${miembro.venceEl})`;
+    const texto = encodeURIComponent(
+      `Hola ${miembro.nombre}, te saludamos de *Kova Gym*. Te recordamos que tu membresía (${miembro.planNombre}) ${estadoTexto}. ¡Escríbenos o pasa por recepción para renovar!`
     );
-}
-      return (
-    <div style={styles.appShell}>
-      {/* Aviso flotante limpio */}
+    const url = tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const crearPlan = async (e) => {
+    e.preventDefault();
+    const precio = parseFloat(String(nuevoPlan.precioUsd).replace(',', '.'));
+    if (!nuevoPlan.nombre.trim() || !precio || precio <= 0) {
+      notificar('Completa nombre y precio en USD del plan');
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('planes')
+        .insert([{ nombre: nuevoPlan.nombre.trim(), precio_usd: precio, duracion_dias: 30 }])
+        .select()
+        .single();
+      if (error) throw error;
+      setPlanes((prev) => [...prev, data]);
+      setNuevoPlan({ nombre: '', precioUsd: '' });
+      notificar('Plan creado');
+    } catch (err) {
+      notificar('Error al crear plan');
+    }
+  };
+
+  const guardarEdicionPlan = async (id) => {
+    const precio = parseFloat(String(editPlanData.precioUsd).replace(',', '.'));
+    if (!editPlanData.nombre.trim() || !precio || precio <= 0) return;
+    try {
+      const { error } = await supabase
+        .from('planes')
+        .update({ nombre: editPlanData.nombre.trim(), precio_usd: precio })
+        .eq('id', id);
+      if (error) throw error;
+      setPlanes((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, nombre: editPlanData.nombre.trim(), precio_usd: precio } : p))
+      );
+      setEditPlanId(null);
+      notificar('Plan actualizado');
+    } catch (err) {
+      notificar('Error al editar plan');
+    }
+  };
+
+  const eliminarPlan = async (id) => {
+    try {
+      const { error } = await supabase.from('planes').delete().eq('id', id);
+      if (error) throw error;
+      setPlanes((prev) => prev.filter((p) => p.id !== id));
+      notificar('Plan eliminado');
+    } catch (err) {
+      notificar('Error al eliminar plan');
+    }
+  };
+
+  const crearGasto = async (e) => {
+    e.preventDefault();
+    const monto = parseFloat(String(nuevoGasto.montoUsd).replace(',', '.'));
+    if (!nuevoGasto.concepto.trim() || !monto || monto <= 0) {
+      notificar('Indica el concepto y monto en USD');
+      return;
+    }
+    const payload = {
+      concepto: nuevoGasto.concepto.trim(),
+      categoria: nuevoGasto.categoria,
+      monto_usd: monto,
+      fecha: nuevoGasto.fecha || new Date().toISOString().slice(0, 10),
+    };
+    try {
+      const { data, error } = await supabase.from('gastos').insert([payload]).select().single();
+      if (error) throw error;
+      setGastos((prev) => [
+        {
+          id: data.id,
+          concepto: data.concepto,
+          categoria: data.categoria,
+          montoUsd: Number(data.monto_usd),
+          fecha: data.fecha,
+        },
+        ...prev,
+      ]);
+      setNuevoGasto({
+        concepto: '',
+        categoria: 'Operación',
+        montoUsd: '',
+        fecha: new Date().toISOString().slice(0, 10),
+      });
+      notificar('Gasto registrado');
+    } catch (err) {
+      notificar('Error al guardar gasto');
+    }
+  };
+
+  const activos = miembros.filter((m) => diasRestantes(m.venceEl) >= 0);
+  const porVencer = miembros.filter((m) => {
+    const d = diasRestantes(m.venceEl);
+    return d >= 0 && d <= diasAviso;
+  });
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const entradasHoy = asistencias.filter((a) => a.fecha === hoyStr).length;
+  const ingresosMesUsd = activos.reduce((acc, m) => acc + Number(m.montoUsd || 0), 0);
+  const gastosMesUsd = gastos.reduce((acc, g) => acc + Number(g.montoUsd || 0), 0);
+
+  const bgMain = isDark ? 'bg-[#09131D] text-[#E6EDF5]' : 'bg-[#F4F7FA] text-[#0F1E2E]';
+  const bgSurface = isDark ? 'bg-[#0E1C2A] border-[#1B2F44]' : 'bg-white border-[#D6E0EA]';
+  const bgSubtle = isDark ? 'bg-[#132537] border-[#213952]' : 'bg-[#EEF3F8] border-[#D6E0EA]';
+  const textMuted = isDark ? 'text-[#8FA4B8]' : 'text-[#5A6E82]';
+        return (
+    <div className={`min-h-screen ${bgMain} transition-colors duration-150`}>
       {toast && (
-        <div
-          style={{
-            ...styles.toast,
-            borderColor:
-              toast.tipo === 'aviso'
-                ? 'rgba(251, 191, 36, 0.45)'
-                : 'rgba(52, 211, 153, 0.45)',
-            color: toast.tipo === 'aviso' ? '#fde68a' : '#a7f3d0',
-          }}
-        >
-          {toast.mensaje}
+        <div className="fixed bottom-4 right-4 z-50 rounded-[4px] border border-sky-500/40 bg-[#0B2239] px-4 py-2.5 text-sm font-medium text-sky-100 shadow-lg">
+          {toast}
         </div>
       )}
 
-      {/* Encabezado superior con Tasa BCV */}
-      <header style={styles.header}>
-        <div style={{ minWidth: 0 }}>
-          <div style={styles.eyebrow}>GESTIÓN DE SERVICIOS</div>
-          <h1 style={styles.brandTitle}>{config.nombre_gimnasio}</h1>
-        </div>
+      {/* Encabezado superior y control único de tasa diaria */}
+      <header className={`sticky top-0 z-30 border-b ${bgSurface}`}>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+          <div className="flex items-center gap-6">
+            <button
+              type="button"
+              onClick={() => setTab('inicio')}
+              className="flex items-center gap-2.5 text-left"
+            >
+              <KovaLogoMark size={34} />
+              <div className="leading-tight">
+                <div className="text-sm font-bold tracking-wide">Kova Gym</div>
+                <div className={`text-[11px] ${textMuted}`}>Control de Acceso y Cobros</div>
+              </div>
+            </button>
 
-        <div style={styles.tasaBox}>
-          <div style={styles.tasaTopRow}>
-            <span style={styles.tasaLabel}>TASA BCV</span>
-            <button
-              type="button"
-              onClick={() => sincronizarTasa(true)}
-              title="Actualizar tasa automáticamente"
-              style={styles.iconBtn}
-            >
-              <RefreshCw
-                size={13}
-                style={{
-                  animation: sincronizandoTasa
-                    ? 'spin 1s linear infinite'
-                    : 'none',
-                }}
-              />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setInputTasa(tasaActiva ? String(tasaActiva) : '');
-                setEditandoTasaRapida((v) => !v);
-              }}
-              title="Editar tasa manualmente"
-              style={styles.iconBtn}
-            >
-              <Edit3 size={13} />
-            </button>
+            <nav className="flex items-center gap-1 overflow-x-auto">
+              {[
+                { id: 'inicio', label: 'Inicio', icon: Home },
+                { id: 'miembros', label: 'Miembros', icon: Users },
+                { id: 'planes', label: 'Planes', icon: Layers },
+                { id: 'gastos', label: 'Gastos', icon: TrendingDown },
+                { id: 'ajustes', label: 'Ajustes', icon: Settings },
+              ].map((item) => {
+                const Icon = item.icon;
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setTab(item.id)}
+                    className={`flex items-center gap-1.5 rounded-[4px] px-3 py-1.5 text-xs font-medium transition ${
+                      active
+                        ? 'bg-sky-600 text-white'
+                        : `${textMuted} hover:bg-sky-500/10 hover:text-current`
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          {editandoTasaRapida ? (
-            <form onSubmit={guardarTasaManual} style={styles.tasaEditForm}>
+          <div className="flex flex-wrap items-center gap-2">
+            <form onSubmit={aplicarTasa} className={`flex items-center rounded-[4px] border px-2 py-1 ${bgSubtle}`}>
+              <span className={`mr-1.5 text-[11px] font-medium ${textMuted}`}>Tasa Bs/$</span>
               <input
-                type="number"
-                step="0.01"
-                placeholder="Ej. 46.80"
-                value={inputTasa}
-                onChange={(e) => setInputTasa(e.target.value)}
-                autoFocus
-                style={styles.tasaMiniInput}
+                type="text"
+                value={tasaInput}
+                onChange={(e) => setTasaInput(e.target.value)}
+                className="w-16 bg-transparent text-xs font-semibold outline-none"
+                aria-label="Tasa del día en bolívares"
               />
-              <button type="submit" style={styles.tasaSaveBtn} title="Guardar">
-                <Check size={14} />
-              </button>
               <button
-                type="button"
-                onClick={() => setEditandoTasaRapida(false)}
-                style={styles.tasaCancelBtn}
-                title="Cancelar"
+                type="submit"
+                className="ml-1.5 rounded-[4px] bg-sky-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-sky-500"
               >
-                <X size={14} />
+                Aplicar
               </button>
             </form>
-          ) : (
-            <div
-              onClick={() => {
-                setInputTasa(tasaActiva ? String(tasaActiva) : '');
-                setEditandoTasaRapida(true);
-              }}
-              style={styles.tasaValueRow}
+
+            <button
+              type="button"
+              onClick={cargarDatos}
+              className={`rounded-[4px] border p-1.5 ${bgSubtle} ${textMuted} hover:text-current`}
+              title="Actualizar datos"
             >
-              {tasaActiva > 0 ? (
-                <span style={styles.tasaValue}>
-                  {tasaActiva.toFixed(2)}{' '}
-                  <span style={styles.tasaUnit}>Bs/$</span>
-                </span>
-              ) : (
-                <span style={styles.tasaMissing}>Definir tasa</span>
-              )}
-            </div>
-          )}
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setModalMiembro(true)}
+              className="flex items-center gap-1 rounded-[4px] bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Nuevo Miembro</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Banner de aviso si no hay tasa definida */}
-      {!(tasaActiva > 0) && (
-        <div style={styles.alertaTasa}>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>
-              Tasa del día pendiente
-            </div>
-            <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 2 }}>
-              Sincroniza la tasa BCV o escríbela para calcular montos en
-              bolívares.
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => sincronizarTasa(true)}
-            style={styles.btnSecundario}
-          >
-            Sincronizar
-          </button>
-        </div>
-      )}
-
-      {/* PESTAÑA 1: RESUMEN */}
-      {tab === 'resumen' && (
-        <div style={styles.stack}>
-          <section style={styles.cardPrincipal}>
-            <div style={styles.cardHeaderRow}>
-              <span style={styles.cardLabel}>
-                INGRESO PROYECTADO POR PLANES ACTIVOS
-              </span>
-              <span style={styles.pillNeutral}>
-                {sociosAlDia.length} al día · {sociosVencidos.length} vencidos
-              </span>
-            </div>
-
-            <div style={styles.bigNumberRow}>
-              <span style={styles.bigUsd}>${carteraActivaUsd.toFixed(2)}</span>
-              <span style={styles.subBs}>{formatBs(carteraActivaUsd)}</span>
-            </div>
-
-            <p style={styles.helperText}>
-              Suma estimada de membresías activas en el ciclo actual (sin
-              inventario).
-            </p>
-          </section>
-
-          <section style={styles.grid2}>
-            <div style={styles.card}>
-              <span style={styles.cardLabel}>COBRADO EN CAJA</span>
-              <div style={{ ...styles.metricUsd, color: '#34d399' }}>
-                ${totalCobradoUsd.toFixed(2)}
+      <main className="mx-auto max-w-7xl px-4 py-5">
+        {tab === 'inicio' && (
+          <div className="space-y-5">
+            {/* Check-in rápido */}
+            <section className={`rounded-[4px] border p-4 ${bgSurface}`}>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+                  Check-in de Recepción
+                </h2>
+                <span className={`text-xs ${textMuted}`}>Ciclo de 30 días desde el pago</span>
               </div>
-              <div style={styles.metricBs}>{formatBs(totalCobradoUsd)}</div>
-            </div>
-
-            <div style={styles.card}>
-              <span style={styles.cardLabel}>GASTOS OPERATIVOS</span>
-              <div style={{ ...styles.metricUsd, color: '#f87171' }}>
-                -${totalGastosUsd.toFixed(2)}
-              </div>
-              <div style={styles.metricBs}>{formatBs(totalGastosUsd)}</div>
-            </div>
-          </section>
-
-          <section style={styles.cardCompacto}>
-            <span style={styles.cardLabel}>FLUJO NETO REGISTRADO</span>
-            <div style={styles.netoRow}>
-              <span
-                style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                  color: balanceCajaUsd >= 0 ? '#e2e8f0' : '#f87171',
-                }}
-              >
-                {balanceCajaUsd >= 0 ? '' : '-'}$
-                {Math.abs(balanceCajaUsd).toFixed(2)}
-              </span>
-              <span style={styles.metricBs}>{formatBs(balanceCajaUsd)}</span>
-            </div>
-          </section>
-
-          <section style={styles.card}>
-            <div style={styles.sectionTitleRow}>
-              <h2 style={styles.sectionTitle}>Últimos pagos</h2>
-              <span style={styles.countBadge}>{pagos.length}</span>
-            </div>
-
-            {pagos.length === 0 ? (
-              <div style={styles.emptyState}>
-                Todavía no hay pagos registrados.
-              </div>
-            ) : (
-              <div>
-                {pagos.slice(0, 8).map((p, idx) => (
-                  <div
-                    key={p.id}
-                    style={{
-                      ...styles.listRow,
-                      borderBottom:
-                        idx === Math.min(pagos.length, 8) - 1
-                          ? 'none'
-                          : '1px solid #262f40',
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={styles.rowPrimary}>
-                        {p.socios?.nombre_completo || 'Socio'}
-                      </div>
-                      <div style={styles.rowSecondary}>
-                        {p.planes?.nombre ? `${p.planes.nombre} · ` : ''}
-                        {p.metodo_pago}
-                        {p.referencia ? ` · Ref ${p.referencia}` : ''}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={styles.montoVerde}>
-                        +${Number(p.monto_usd).toFixed(2)}
-                      </div>
-                      <div style={styles.rowSecondary}>
-                        {Number(p.monto_bs || 0) > 0
-                          ? `${Number(p.monto_bs).toLocaleString('es-VE', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })} Bs`
-                          : formatBs(p.monto_usd)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
-      {/* PESTAÑA 2: SOCIOS */}
-      {tab === 'socios' && (
-        <div style={styles.stack}>
-          <form onSubmit={registrarSocio} style={styles.card}>
-            <div style={styles.sectionTitleRow}>
-              <h2 style={styles.sectionTitle}>Registrar socio</h2>
-              <Plus size={16} color="#94a3b8" />
-            </div>
-
-            <div style={styles.formGrid}>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Cédula</label>
-                <input
-                  placeholder="Ej. 26450123"
-                  value={nuevoSocio.cedula}
-                  onChange={(e) =>
-                    setNuevoSocio({ ...nuevoSocio, cedula: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Teléfono</label>
-                <input
-                  placeholder="Ej. 04120000000"
-                  value={nuevoSocio.telefono}
-                  onChange={(e) =>
-                    setNuevoSocio({ ...nuevoSocio, telefono: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={{ ...styles.fieldGroup, gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Nombre y apellido</label>
-                <input
-                  placeholder="Nombre completo del socio"
-                  value={nuevoSocio.nombre_completo}
-                  onChange={(e) =>
-                    setNuevoSocio({
-                      ...nuevoSocio,
-                      nombre_completo: e.target.value,
-                    })
-                  }
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={{ ...styles.fieldGroup, gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Plan asignado</label>
-                <select
-                  value={nuevoSocio.plan_id}
-                  onChange={(e) =>
-                    setNuevoSocio({ ...nuevoSocio, plan_id: e.target.value })
-                  }
-                  style={styles.select}
-                >
-                  {planes.map((pl) => (
-                    <option key={pl.id} value={pl.id}>
-                      {pl.nombre} — ${Number(pl.precio_usd).toFixed(2)} (
-                      {formatBs(pl.precio_usd)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button type="submit" style={styles.btnPrimario}>
-              Guardar y activar socio
-            </button>
-          </form>
-
-          <section style={styles.card}>
-            <div style={styles.searchBox}>
-              <Search size={16} color="#7c879c" />
-              <input
-                placeholder="Buscar por nombre o cédula..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                style={styles.searchInput}
-              />
-            </div>
-
-            <div style={styles.filterRow}>
-              {[
-                { id: 'todos', label: `Todos (${socios.length})` },
-                {
-                  id: 'activo',
-                  label: `Al día (${
-                    sociosConEstado.filter((s) => s.sem.tipo === 'activo').length
-                  })`,
-                },
-                {
-                  id: 'por_vencer',
-                  label: `Por vencer (${
-                    sociosConEstado.filter((s) => s.sem.tipo === 'por_vencer')
-                      .length
-                  })`,
-                },
-                {
-                  id: 'vencido',
-                  label: `Vencidos (${sociosVencidos.length})`,
-                },
-              ].map((f) => (
+              <form onSubmit={buscarCheckin} className="flex flex-col gap-2 sm:flex-row">
+                <div className={`relative flex-1 rounded-[4px] border ${bgSubtle}`}>
+                  <Search className={`absolute left-3 top-2.5 h-4 w-4 ${textMuted}`} />
+                  <input
+                    type="text"
+                    value={checkinQuery}
+                    onChange={(e) => setCheckinQuery(e.target.value)}
+                    placeholder="Buscar por nombre, cédula o teléfono..."
+                    className="w-full bg-transparent py-2 pl-9 pr-3 text-sm outline-none"
+                  />
+                </div>
                 <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setFiltroEstado(f.id)}
-                  style={{
-                    ...styles.filterChip,
-                    background:
-                      filtroEstado === f.id ? '#273247' : 'transparent',
-                    color: filtroEstado === f.id ? '#f1f5f9' : '#94a3b8',
-                    borderColor:
-                      filtroEstado === f.id ? '#3e4d68' : '#262f40',
-                  }}
+                  type="submit"
+                  className="rounded-[4px] bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-500"
                 >
-                  {f.label}
+                  Verificar Acceso
                 </button>
-              ))}
-            </div>
+              </form>
 
-            {sociosFiltrados.length === 0 ? (
-              <div style={styles.emptyState}>
-                No hay socios que coincidan con el filtro.
-              </div>
-            ) : (
-              <div style={{ marginTop: 8 }}>
-                {sociosFiltrados.map((s, idx) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      ...styles.socioRow,
-                      borderBottom:
-                        idx === sociosFiltrados.length - 1
-                          ? 'none'
-                          : '1px solid #262f40',
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={styles.rowPrimary}>{s.nombre_completo}</div>
-                      <div style={styles.rowSecondary}>
-                        CI {s.cedula} · {s.planes?.nombre || 'Sin plan'}
-                        {s.fecha_vencimiento
-                          ? ` · Vence ${s.fecha_vencimiento}`
-                          : ''}
-                      </div>
-                      <span
-                        style={{
-                          ...styles.semBadge,
-                          color: s.sem.color,
-                          background: s.sem.bg,
-                          borderColor: s.sem.border,
-                        }}
-                      >
-                        {s.sem.label}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCobroModal(s);
-                        setDatosCobro({
-                          plan_id: s.plan_id || planes[0]?.id || '',
-                          metodo_pago: 'Pago Móvil',
-                          referencia: '',
-                        });
-                      }}
-                      style={styles.btnCobrar}
-                    >
-                      Cobrar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
-      {/* PESTAÑA 3: GASTOS */}
-      {tab === 'gastos' && (
-        <div style={styles.stack}>
-          <form onSubmit={registrarGasto} style={styles.card}>
-            <h2 style={styles.sectionTitle}>Registrar gasto operativo</h2>
-            <div style={{ ...styles.formGrid, marginTop: 12 }}>
-              <div style={{ ...styles.fieldGroup, gridColumn: '1 / -1' }}>
-                <label style={styles.label}>Concepto</label>
-                <input
-                  placeholder="Ej. Botellones de agua, insumos de limpieza"
-                  value={nuevoGasto.concepto}
-                  onChange={(e) =>
-                    setNuevoGasto({ ...nuevoGasto, concepto: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Monto (USD)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={nuevoGasto.monto_usd}
-                  onChange={(e) =>
-                    setNuevoGasto({ ...nuevoGasto, monto_usd: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              </div>
-
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Método</label>
-                <select
-                  value={nuevoGasto.metodo_pago}
-                  onChange={(e) =>
-                    setNuevoGasto({
-                      ...nuevoGasto,
-                      metodo_pago: e.target.value,
-                    })
-                  }
-                  style={styles.select}
-                >
-                  <option>Efectivo USD</option>
-                  <option>Pago Móvil</option>
-                  <option>Efectivo Bs</option>
-                  <option>Transferencia</option>
-                </select>
-              </div>
-            </div>
-
-            <button type="submit" style={styles.btnGasto}>
-              Guardar gasto
-            </button>
-          </form>
-
-          <section style={styles.card}>
-            <div style={styles.sectionTitleRow}>
-              <h2 style={styles.sectionTitle}>Historial de gastos</h2>
-              <span style={styles.countBadge}>{gastos.length}</span>
-            </div>
-
-            {gastos.length === 0 ? (
-              <div style={styles.emptyState}>
-                No hay gastos operativos registrados.
-              </div>
-            ) : (
-              <div>
-                {gastos.map((g, idx) => (
-                  <div
-                    key={g.id}
-                    style={{
-                      ...styles.listRow,
-                      borderBottom:
-                        idx === gastos.length - 1
-                          ? 'none'
-                          : '1px solid #262f40',
-                    }}
-                  >
-                    <div>
-                      <div style={styles.rowPrimary}>{g.concepto}</div>
-                      <div style={styles.rowSecondary}>
-                        {g.metodo_pago}
-                        {g.fecha_gasto
-                          ? ` · ${String(g.fecha_gasto).slice(0, 10)}`
-                          : ''}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={styles.montoRojo}>
-                        -${Number(g.monto_usd).toFixed(2)}
-                      </div>
-                      <div style={styles.rowSecondary}>
-                        {Number(g.monto_bs || 0) > 0
-                          ? `${Number(g.monto_bs).toLocaleString('es-VE', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })} Bs`
-                          : formatBs(g.monto_usd)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
-      {/* PESTAÑA 4: AJUSTES */}
-      {tab === 'ajustes' && (
-        <div style={styles.stack}>
-          <section style={styles.card}>
-            <h2 style={styles.sectionTitle}>Tasa del día (BCV)</h2>
-            <p style={{ ...styles.helperText, marginTop: 4, marginBottom: 12 }}>
-              Se sincroniza automáticamente al abrir y puedes ajustarla cuando
-              lo necesites.
-            </p>
-            <form onSubmit={guardarTasaManual} style={styles.inlineRow}>
-              <input
-                type="number"
-                step="0.01"
-                value={inputTasa}
-                onChange={(e) => setInputTasa(e.target.value)}
-                placeholder="Monto en Bs"
-                style={{ ...styles.input, flex: 1 }}
-              />
-              <button type="submit" style={styles.btnPrimarioInline}>
-                Guardar
-              </button>
-              <button
-                type="button"
-                onClick={() => sincronizarTasa(true)}
-                style={styles.btnSecundario}
-          >
-                Auto
-              </button>
-            </form>
-          </section>
-
-          <section style={styles.card}>
-            <h2 style={styles.sectionTitle}>Planes y tarifas</h2>
-            <div style={{ marginTop: 8 }}>
-              {planes.map((pl, idx) => (
+              {checkinResultado && (
                 <div
-                  key={pl.id}
-                  style={{
-                    padding: '12px 0',
-                    borderBottom:
-                      idx === planes.length - 1 ? 'none' : '1px solid #262f40',
-                  }}
+                  className={`mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[4px] border p-3 text-xs ${
+                    checkinResultado.ok
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                      : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                  }`}
                 >
-                  {editandoPlan?.id === pl.id ? (
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      <input
-                        value={editandoPlan.nombre}
-                        onChange={(e) =>
-                          setEditandoPlan({
-                            ...editandoPlan,
-                            nombre: e.target.value,
-                          })
-                        }
-                        style={styles.input}
-                      />
-                      <div style={styles.formGrid}>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editandoPlan.precio_usd}
-                          onChange={(e) =>
-                            setEditandoPlan({
-                              ...editandoPlan,
-                              precio_usd: e.target.value,
-                            })
-                          }
-                          style={styles.input}
-                        />
-                        <input
-                          type="number"
-                          value={editandoPlan.duracion_dias}
-                          onChange={(e) =>
-                            setEditandoPlan({
-                              ...editandoPlan,
-                              duracion_dias: e.target.value,
-                            })
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          type="button"
-                          onClick={() => guardarPlan(editandoPlan)}
-                          style={styles.btnPrimarioInline}
-                        >
-                          Guardar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditandoPlan(null)}
-                          style={styles.btnSecundario}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
+                  <div>
+                    <div className="font-semibold">
+                      {checkinResultado.miembro ? checkinResultado.miembro.nombre : 'Sin coincidencia'}
                     </div>
-                  ) : (
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div>
-                        <div style={styles.rowPrimary}>
-                          {pl.nombre}{' '}
-                          <span style={styles.rowSecondary}>
-                            ({pl.duracion_dias} días)
-                          </span>
-                        </div>
-                        <div style={styles.rowSecondary}>
-                          ${Number(pl.precio_usd).toFixed(2)} ·{' '}
-                          {formatBs(pl.precio_usd)}
-                        </div>
-                      </div>
+                    <div>{checkinResultado.mensaje}</div>
+                  </div>
+                  {checkinResultado.miembro && (
+                    <div className="flex items-center gap-2">
+                      {checkinResultado.ok ? (
+                        <button
+                          type="button"
+                          onClick={() => registrarAsistencia(checkinResultado.miembro)}
+                          className="rounded-[4px] bg-emerald-600 px-3 py-1.5 font-semibold text-white hover:bg-emerald-500"
+                        >
+                          Registrar Entrada
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => renovarMiembro(checkinResultado.miembro)}
+                          className="rounded-[4px] bg-sky-600 px-3 py-1.5 font-semibold text-white hover:bg-sky-500"
+                        >
+                          Renovar (+30 días)
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => setEditandoPlan(pl)}
-                        style={styles.btnSecundario}
+                        onClick={() => abrirWhatsApp(checkinResultado.miembro)}
+                        className="flex items-center gap-1 rounded-[4px] border border-current/30 px-2.5 py-1.5 font-medium"
                       >
-                        Editar
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        <span>WhatsApp</span>
                       </button>
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
+              )}
+            </section>
 
-      {/* MODAL DE COBRO / RENOVACIÓN */}
-      {cobroModal && (
-        <div style={styles.modalOverlay}>
-          <form onSubmit={procesarCobro} style={styles.modalCard}>
-            <div style={styles.sectionTitleRow}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-                Cobrar a {cobroModal.nombre_completo}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setCobroModal(null)}
-                style={styles.iconBtn}
-              >
-                <X size={16} />
-              </button>
-            </div>
+            {/* Métricas en USD y Bs */}
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className={`rounded-[4px] border p-4 ${bgSurface}`}>
+                <div className={`text-xs ${textMuted}`}>Miembros Activos</div>
+                <div className="mt-1 text-2xl font-bold">{activos.length}</div>
+                <div className={`mt-1 text-xs ${textMuted}`}>Total registrados: {miembros.length}</div>
+              </div>
+              <div className={`rounded-[4px] border p-4 ${bgSurface}`}>
+                <div className={`text-xs ${textMuted}`}>Próximos a Vencer ({diasAviso}d)</div>
+                <div className="mt-1 text-2xl font-bold text-amber-400">{porVencer.length}</div>
+                <div className={`mt-1 text-xs ${textMuted}`}>Aviso preventivo activo</div>
+              </div>
+              <div className={`rounded-[4px] border p-4 ${bgSurface}`}>
+                <div className={`text-xs ${textMuted}`}>Entradas Hoy</div>
+                <div className="mt-1 text-2xl font-bold text-sky-400">{entradasHoy}</div>
+                <div className={`mt-1 text-xs ${textMuted}`}>Control de asistencia</div>
+              </div>
+              <div className={`rounded-[4px] border p-4 ${bgSurface}`}>
+                <div className={`text-xs ${textMuted}`}>Ingresos Estimados (Activos)</div>
+                <div className="mt-1 text-xl font-bold">{fmtUsd(ingresosMesUsd)}</div>
+                <div className={`mt-0.5 text-xs ${textMuted}`}>{fmtBs(ingresosMesUsd)}</div>
+              </div>
+            </section>
 
-            <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Plan a aplicar</label>
-                <select
-                  value={datosCobro.plan_id}
-                  onChange={(e) =>
-                    setDatosCobro({ ...datosCobro, plan_id: e.target.value })
-                  }
-                  style={styles.select}
-                >
-                  {planes.map((pl) => (
-                    <option key={pl.id} value={pl.id}>
-                      {pl.nombre} — ${Number(pl.precio_usd).toFixed(2)} (
-                      {formatBs(pl.precio_usd)})
-                    </option>
-                  ))}
-                </select>
+            {/* Por vencer y actividad reciente */}
+            <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className={`rounded-[4px] border p-4 ${bgSurface}`}>
+                <h3 className="mb-3 text-sm font-semibold">Próximos a vencer</h3>
+                <div className="space-y-2">
+                  {porVencer.length === 0 ? (
+                    <p className={`text-xs ${textMuted}`}>No hay miembros por vencer en los próximos {diasAviso} días.</p>
+                  ) : (
+                    porVencer.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`flex flex-wrap items-center justify-between gap-2 rounded-[4px] border p-2.5 text-xs ${bgSubtle}`}
+                      >
+                        <div>
+                          <div className="font-semibold">{m.nombre}</div>
+                          <div className={textMuted}>
+                            Vence: {m.venceEl} ({diasRestantes(m.venceEl)}d) · {fmtUsd(m.montoUsd)} / {fmtBs(m.montoUsd)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => abrirWhatsApp(m)}
+                            className="flex items-center gap-1 rounded-[4px] bg-emerald-600 px-2.5 py-1 font-semibold text-white hover:bg-emerald-500"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            <span>WhatsApp</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => renovarMiembro(m)}
+                            className="rounded-[4px] bg-sky-600 px-2.5 py-1 font-semibold text-white hover:bg-sky-500"
+                          >
+                            Renovar
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Método de pago</label>
-                <select
-                  value={datosCobro.metodo_pago}
-                  onChange={(e) =>
-                    setDatosCobro({
-                      ...datosCobro,
-                      metodo_pago: e.target.value,
-                    })
-                  }
-                  style={styles.select}
-                >
-                  <option>Pago Móvil</option>
-                  <option>Efectivo USD</option>
-                  <option>Efectivo Bs</option>
-                  <option>Punto de Venta</option>
-                  <option>Zelle</option>
-                </select>
+              <div className={`rounded-[4px] border p-4 ${bgSurface}`}>
+                <h3 className="mb-3 text-sm font-semibold">Asistencias recientes</h3>
+                <div className="space-y-2">
+                  {asistencias.length === 0 ? (
+                    <p className={`text-xs ${textMuted}`}>Aún no hay entradas registradas hoy.</p>
+                  ) : (
+                    asistencias.slice(0, 8).map((a) => (
+                      <div
+                        key={a.id}
+                        className={`flex items-center justify-between rounded-[4px] border px-3 py-2 text-xs ${bgSubtle}`}
+                      >
+                        <span className="font-medium">{a.nombre}</span>
+                        <span className={textMuted}>
+                          {a.fecha} · {a.hora}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
+            </section>
+          </div>
+        )}
 
-              <div style={styles.fieldGroup}>
-                <label style={styles.label}>Referencia (opcional)</label>
+        {tab === 'miembros' && (
+          <section className={`rounded-[4px] border p-4 ${bgSurface}`}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Miembros</h2>
+              <div className={`relative w-full sm:w-72 rounded-[4px] border ${bgSubtle}`}>
+                <Search className={`absolute left-2.5 top-2 h-4 w-4 ${textMuted}`} />
                 <input
-                  placeholder="Últimos dígitos o nota"
-                  value={datosCobro.referencia}
-                  onChange={(e) =>
-                    setDatosCobro({ ...datosCobro, referencia: e.target.value })
-                  }
-                  style={styles.input}
+                  type="text"
+                  value={busquedaMiembro}
+                  onChange={(e) => setBusquedaMiembro(e.target.value)}
+                  placeholder="Filtrar miembro..."
+                  className="w-full bg-transparent py-1.5 pl-8 pr-3 text-xs outline-none"
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className={`border-b ${textMuted}`}>
+                    <th className="py-2 pr-3">Nombre</th>
+                    <th className="py-2 pr-3">Plan</th>
+                    <th className="py-2 pr-3">Monto (USD / Bs)</th>
+                    <th className="py-2 pr-3">Último Pago</th>
+                    <th className="py-2 pr-3">Vence (30d)</th>
+                    <th className="py-2 pr-3">Estado</th>
+                    <th className="py-2 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {miembros
+                    .filter((m) =>
+                      `${m.nombre} ${m.cedula} ${m.telefono}`
+                        .toLowerCase()
+                        .includes(busquedaMiembro.toLowerCase())
+                    )
+                    .map((m) => {
+                      const d = diasRestantes(m.venceEl);
+                      const vigente = d >= 0;
+                      return (
+                        <tr key={m.id} className={`border-b border-current/10`}>
+                          <td className="py-2.5 pr-3 font-medium">{m.nombre}</td>
+                          <td className="py-2.5 pr-3">{m.planNombre}</td>
+                          <td className="py-2.5 pr-3">
+                            <div>{fmtUsd(m.montoUsd)}</div>
+                            <div className={textMuted}>{fmtBs(m.montoUsd)}</div>
+                          </td>
+                          <td className="py-2.5 pr-3">{m.ultimoPago}</td>
+                          <td className="py-2.5 pr-3">{m.venceEl}</td>
+                          <td className="py-2.5 pr-3">
+                            <span
+                              className={`rounded-[4px] px-2 py-0.5 font-semibold ${
+                                vigente
+                                  ? 'bg-emerald-500/15 text-emerald-400'
+                                  : 'bg-rose-500/15 text-rose-400'
+                              }`}
+                            >
+                              {vigente ? `Activo (${d}d)` : 'Vencido'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => abrirWhatsApp(m)}
+                                className="rounded-[4px] bg-emerald-600 px-2 py-1 font-semibold text-white hover:bg-emerald-500"
+                              >
+                                WhatsApp
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => renovarMiembro(m)}
+                                className="rounded-[4px] bg-sky-600 px-2 py-1 font-semibold text-white hover:bg-sky-500"
+                              >
+                                Renovar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+                  {tab === 'planes' && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <form onSubmit={crearPlan} className={`rounded-[4px] border p-4 space-y-3 ${bgSurface}`}>
+              <h2 className="text-sm font-semibold">Nuevo Plan (30 días)</h2>
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Nombre del plan</label>
+                <input
+                  type="text"
+                  value={nuevoPlan.nombre}
+                  onChange={(e) => setNuevoPlan({ ...nuevoPlan, nombre: e.target.value })}
+                  placeholder="Ej. Mensualidad General"
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Precio en USD ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={nuevoPlan.precioUsd}
+                  onChange={(e) => setNuevoPlan({ ...nuevoPlan, precioUsd: e.target.value })}
+                  placeholder="25.00"
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full rounded-[4px] bg-sky-600 py-2 text-xs font-semibold text-white hover:bg-sky-500"
+              >
+                Guardar Plan
+              </button>
+            </form>
+
+            <div className={`lg:col-span-2 rounded-[4px] border p-4 ${bgSurface}`}>
+              <h2 className="mb-3 text-sm font-semibold">Planes configurados</h2>
+              <div className="space-y-2">
+                {planes.map((p) => (
+                  <div
+                    key={p.id}
+                    className={`flex flex-wrap items-center justify-between gap-2 rounded-[4px] border p-3 text-xs ${bgSubtle}`}
+                  >
+                    {editPlanId === p.id ? (
+                      <div className="flex flex-wrap items-center gap-2 flex-1">
+                        <input
+                          type="text"
+                          value={editPlanData.nombre}
+                          onChange={(e) => setEditPlanData({ ...editPlanData, nombre: e.target.value })}
+                          className={`rounded-[4px] border px-2 py-1 ${bgSurface}`}
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editPlanData.precioUsd}
+                          onChange={(e) => setEditPlanData({ ...editPlanData, precioUsd: e.target.value })}
+                          className={`w-24 rounded-[4px] border px-2 py-1 ${bgSurface}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => guardarEdicionPlan(p.id)}
+                          className="rounded-[4px] bg-emerald-600 px-2.5 py-1 font-semibold text-white"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditPlanId(null)}
+                          className="rounded-[4px] border px-2 py-1"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <div className="font-semibold">{p.nombre}</div>
+                          <div className={textMuted}>
+                            {fmtUsd(p.precio_usd)} · {fmtBs(p.precio_usd)} · Ciclo de 30 días
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditPlanId(p.id);
+                              setEditPlanData({ nombre: p.nombre, precioUsd: p.precio_usd });
+                            }}
+                            className="rounded-[4px] border px-2.5 py-1 font-medium hover:bg-sky-500/10"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => eliminarPlan(p.id)}
+                            className="rounded-[4px] border border-rose-500/30 px-2.5 py-1 text-rose-400 hover:bg-rose-500/10"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'gastos' && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <form onSubmit={crearGasto} className={`rounded-[4px] border p-4 space-y-3 ${bgSurface}`}>
+              <h2 className="text-sm font-semibold">Registrar Gasto</h2>
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Concepto</label>
+                <input
+                  type="text"
+                  value={nuevoGasto.concepto}
+                  onChange={(e) => setNuevoGasto({ ...nuevoGasto, concepto: e.target.value })}
+                  placeholder="Ej. Limpieza, mantenimiento..."
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Monto en USD ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={nuevoGasto.montoUsd}
+                  onChange={(e) => setNuevoGasto({ ...nuevoGasto, montoUsd: e.target.value })}
+                  placeholder="15.00"
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Fecha</label>
+                <input
+                  type="date"
+                  value={nuevoGasto.fecha}
+                  onChange={(e) => setNuevoGasto({ ...nuevoGasto, fecha: e.target.value })}
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full rounded-[4px] bg-sky-600 py-2 text-xs font-semibold text-white hover:bg-sky-500"
+              >
+                Agregar Gasto
+              </button>
+            </form>
+
+            <div className={`lg:col-span-2 rounded-[4px] border p-4 ${bgSurface}`}>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Historial de Gastos</h2>
+                <div className="text-xs font-semibold text-rose-400">
+                  Total: {fmtUsd(gastosMesUsd)} ({fmtBs(gastosMesUsd)})
+                </div>
+              </div>
+              <div className="space-y-2">
+                {gastos.map((g) => (
+                  <div
+                    key={g.id}
+                    className={`flex items-center justify-between rounded-[4px] border p-3 text-xs ${bgSubtle}`}
+                  >
+                    <div>
+                      <div className="font-semibold">{g.concepto}</div>
+                      <div className={textMuted}>
+                        {g.fecha} · {g.categoria}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold">{fmtUsd(g.montoUsd)}</div>
+                      <div className={textMuted}>{fmtBs(g.montoUsd)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'ajustes' && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <section className={`rounded-[4px] border p-4 space-y-4 ${bgSurface}`}>
+              <h2 className="text-sm font-semibold">Preferencias del Sistema</h2>
+              <div>
+                <label className={`block text-xs mb-1.5 ${textMuted}`}>Apariencia</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTheme('dark')}
+                    className={`rounded-[4px] border px-3 py-1.5 text-xs font-semibold ${
+                      theme === 'dark' ? 'bg-sky-600 text-white border-sky-600' : bgSubtle
+                    }`}
+                  >
+                    Oscuro Océano
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTheme('light')}
+                    className={`rounded-[4px] border px-3 py-1.5 text-xs font-semibold ${
+                      theme === 'light' ? 'bg-sky-600 text-white border-sky-600' : bgSubtle
+                    }`}
+                  >
+                    Claro
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>
+                  Días de anticipación para aviso de vencimiento
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={diasAviso}
+                  onChange={(e) => setDiasAviso(Number(e.target.value) || 5)}
+                  className={`w-28 rounded-[4px] border px-3 py-1.5 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+            </section>
+
+            <section className={`rounded-[4px] border p-4 space-y-3 ${bgSurface}`}>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-sky-400" />
+                <h2 className="text-sm font-semibold">Estado y Datos del Sistema</h2>
+              </div>
+              <div className={`rounded-[4px] border p-3 text-xs space-y-1.5 ${bgSubtle}`}>
+                <div>
+                  <span className={textMuted}>Marca: </span>
+                  <span className="font-semibold">{infoSistema.marca}</span>
+                </div>
+                <div>
+                  <span className={textMuted}>Desarrollado por: </span>
+                  <span className="font-semibold">{infoSistema.desarrollador}</span>
+                </div>
+                <div>
+                  <span className={textMuted}>Versión: </span>
+                  <span className="font-semibold">{infoSistema.version}</span>
+                </div>
+                <div>
+                  <span className={textMuted}>Base de datos: </span>
+                  <span className="font-semibold">Supabase (tablas: miembros, planes, gastos, asistencias)</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
+
+      {/* Modal Nuevo Miembro */}
+      {modalMiembro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <form onSubmit={crearMiembro} className={`w-full max-w-md rounded-[4px] border p-5 space-y-3 ${bgSurface}`}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Registrar Nuevo Miembro</h2>
+              <button type="button" onClick={() => setModalMiembro(false)} className={textMuted}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className={`block text-xs mb-1 ${textMuted}`}>Nombre completo</label>
+              <input
+                type="text"
+                value={nuevoMiembro.nombre}
+                onChange={(e) => setNuevoMiembro({ ...nuevoMiembro, nombre: e.target.value })}
+                className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Cédula</label>
+                <input
+                  type="text"
+                  value={nuevoMiembro.cedula}
+                  onChange={(e) => setNuevoMiembro({ ...nuevoMiembro, cedula: e.target.value })}
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Teléfono (WhatsApp)</label>
+                <input
+                  type="text"
+                  value={nuevoMiembro.telefono}
+                  onChange={(e) => setNuevoMiembro({ ...nuevoMiembro, telefono: e.target.value })}
+                  placeholder="58412..."
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Plan (30 días)</label>
+                <select
+                  value={nuevoMiembro.planId}
+                  onChange={(e) => setNuevoMiembro({ ...nuevoMiembro, planId: e.target.value })}
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                >
+                  {planes.length === 0 ? (
+                    <option value="">Plan Mensual</option>
+                  ) : (
+                    planes.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} ({fmtUsd(p.precio_usd)})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className={`block text-xs mb-1 ${textMuted}`}>Fecha de pago</label>
+                <input
+                  type="date"
+                  value={nuevoMiembro.fechaPago}
+                  onChange={(e) => setNuevoMiembro({ ...nuevoMiembro, fechaPago: e.target.value })}
+                  className={`w-full rounded-[4px] border px-3 py-2 text-xs outline-none ${bgSubtle}`}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setCobroModal(null)}
-                style={{ ...styles.btnSecundario, flex: 1 }}
+                onClick={() => setModalMiembro(false)}
+                className={`rounded-[4px] border px-3 py-1.5 text-xs ${bgSubtle}`}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                style={{ ...styles.btnPrimarioInline, flex: 1 }}
+                className="rounded-[4px] bg-sky-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"
               >
-                Confirmar cobro
+                Guardar Miembro
               </button>
             </div>
           </form>
         </div>
       )}
-
-      {/* BARRA INFERIOR */}
-      <nav style={styles.bottomNav}>
-        <button
-          type="button"
-          onClick={() => setTab('resumen')}
-          style={navItemStyle(tab === 'resumen')}
-        >
-          <Wallet size={18} />
-          <span>Resumen</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('socios')}
-          style={navItemStyle(tab === 'socios')}
-        >
-          <Users size={18} />
-          <span>Socios</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('gastos')}
-          style={navItemStyle(tab === 'gastos')}
-        >
-          <TrendingDown size={18} />
-          <span>Gastos</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('ajustes')}
-          style={navItemStyle(tab === 'ajustes')}
-        >
-          <Settings size={18} />
-          <span>Ajustes</span>
-        </button>
-      </nav>
     </div>
   );
-                }
-const navItemStyle = (active) => ({
-  background: active ? 'rgba(96, 165, 250, 0.1)' : 'transparent',
-  border: 'none',
-  borderRadius: 10,
-  color: active ? '#93c5fd' : '#8b95a7',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 3,
-  padding: '6px 14px',
-  fontSize: 11,
-  fontWeight: active ? 600 : 500,
-  cursor: 'pointer',
-});
-
-const styles = {
-  appShell: {
-    maxWidth: 720,
-    margin: '0 auto',
-    padding: '16px 14px 92px',
-    backgroundColor: '#12161f',
-    color: '#e6ecf5',
-    minHeight: '100vh',
-  },
-  pantallaCarga: {
-    minHeight: '100vh',
-    backgroundColor: '#12161f',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  spinnerDot: {
-    width: 18,
-    height: 18,
-    borderRadius: '50%',
-    backgroundColor: '#60a5fa',
-  },
-  toast: {
-    position: 'fixed',
-    top: 14,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    backgroundColor: '#1e2636',
-    border: '1px solid',
-    padding: '9px 14px',
-    borderRadius: 10,
-    fontSize: 12.5,
-    fontWeight: 500,
-    zIndex: 80,
-    maxWidth: '92%',
-    textAlign: 'center',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#181e2b',
-    border: '1px solid #262f40',
-    borderRadius: 14,
-    padding: '14px 16px',
-    marginBottom: 12,
-  },
-  eyebrow: {
-    fontSize: 10.5,
-    letterSpacing: '0.07em',
-    color: '#7c879c',
-    fontWeight: 600,
-  },
-  brandTitle: {
-    margin: '2px 0 0',
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#f1f5f9',
-    letterSpacing: '-0.01em',
-  },
-  tasaBox: {
-    backgroundColor: '#1e2636',
-    border: '1px solid #2c374c',
-    borderRadius: 11,
-    padding: '8px 11px',
-    minWidth: 126,
-  },
-  tasaTopRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  tasaLabel: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: '0.05em',
-    color: '#94a3b8',
-  },
-  iconBtn: {
-    background: 'transparent',
-    border: 'none',
-    color: '#94a3b8',
-    padding: 2,
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-  },
-  tasaValueRow: {
-    marginTop: 3,
-    cursor: 'pointer',
-  },
-  tasaValue: {
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#34d399',
-    fontVariantNumeric: 'tabular-nums',
-  },
-  tasaUnit: {
-    fontSize: 11,
-    fontWeight: 500,
-    color: '#94a3b8',
-  },
-  tasaMissing: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#fbbf24',
-  },
-  tasaEditForm: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 5,
-  },
-  tasaMiniInput: {
-    width: 72,
-    padding: '4px 6px',
-    fontSize: 12,
-    borderRadius: 6,
-    border: '1px solid #3c4b66',
-    backgroundColor: '#12161f',
-    color: '#f8fafc',
-  },
-  tasaSaveBtn: {
-    backgroundColor: '#10b981',
-    color: '#06281e',
-    border: 'none',
-    borderRadius: 6,
-    padding: '4px 6px',
-    cursor: 'pointer',
-    display: 'inline-flex',
-  },
-  tasaCancelBtn: {
-    backgroundColor: '#2c374c',
-    color: '#cbd5e1',
-    border: 'none',
-    borderRadius: 6,
-    padding: '4px 6px',
-    cursor: 'pointer',
-    display: 'inline-flex',
-  },
-  alertaTasa: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(251, 191, 36, 0.08)',
-    border: '1px solid rgba(251, 191, 36, 0.25)',
-    borderRadius: 12,
-    padding: '12px 14px',
-    marginBottom: 12,
-  },
-  stack: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  },
-  cardPrincipal: {
-    backgroundColor: '#192130',
-    border: '1px solid #2b374d',
-    borderRadius: 14,
-    padding: 18,
-  },
-  card: {
-    backgroundColor: '#181e2b',
-    border: '1px solid #262f40',
-    borderRadius: 14,
-    padding: 16,
-  },
-  cardCompacto: {
-    backgroundColor: '#181e2b',
-    border: '1px solid #262f40',
-    borderRadius: 14,
-    padding: '13px 16px',
-  },
-  cardHeaderRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  cardLabel: {
-    fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: '0.05em',
-    color: '#8b95a7',
-  },
-  pillNeutral: {
-    fontSize: 11.5,
-    color: '#cbd5e1',
-    backgroundColor: '#232c3e',
-    border: '1px solid #303c54',
-    padding: '3px 9px',
-    borderRadius: 999,
-  },
-  bigNumberRow: {
-    display: 'flex',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
-  },
-  bigUsd: {
-    fontSize: 32,
-    fontWeight: 800,
-    color: '#f8fafc',
-    fontVariantNumeric: 'tabular-nums',
-    letterSpacing: '-0.02em',
-  },
-  subBs: {
-    fontSize: 15,
-    fontWeight: 600,
-    color: '#93c5fd',
-    fontVariantNumeric: 'tabular-nums',
-  },
-  helperText: {
-    margin: '8px 0 0',
-    fontSize: 12,
-    color: '#7c879c',
-  },
-  grid2: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 12,
-  },
-  metricUsd: {
-    fontSize: 22,
-    fontWeight: 700,
-    marginTop: 6,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  metricBs: {
-    fontSize: 12.5,
-    color: '#94a3b8',
-    marginTop: 2,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  netoRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginTop: 6,
-  },
-  sectionTitleRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    margin: 0,
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#f1f5f9',
-  },
-  countBadge: {
-    fontSize: 11.5,
-    color: '#94a3b8',
-    backgroundColor: '#222b3d',
-    padding: '2px 8px',
-    borderRadius: 999,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  listRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    padding: '11px 0',
-  },
-  socioRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    padding: '12px 0',
-  },
-  rowPrimary: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#e6ecf5',
-  },
-  rowSecondary: {
-    fontSize: 12,
-    color: '#8b95a7',
-    marginTop: 2,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  montoVerde: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: '#34d399',
-    fontVariantNumeric: 'tabular-nums',
-  },
-  montoRojo: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: '#f87171',
-    fontVariantNumeric: 'tabular-nums',
-  },
-  semBadge: {
-    display: 'inline-block',
-    marginTop: 6,
-    padding: '2px 9px',
-    borderRadius: 999,
-    fontSize: 11,
-    fontWeight: 600,
-    border: '1px solid',
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 10,
-  },
-  fieldGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 5,
-  },
-  label: {
-    fontSize: 11.5,
-    fontWeight: 600,
-    color: '#9aa5b8',
-  },
-  input: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: 10,
-    border: '1px solid #2b3548',
-    backgroundColor: '#12161f',
-    color: '#f1f5f9',
-    fontSize: 13.5,
-    boxSizing: 'border-box',
-    outline: 'none',
-  },
-  select: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: 10,
-    border: '1px solid #2b3548',
-    backgroundColor: '#12161f',
-    color: '#f1f5f9',
-    fontSize: 13.5,
-    boxSizing: 'border-box',
-    outline: 'none',
-  },
-  searchBox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#12161f',
-    border: '1px solid #2b3548',
-    borderRadius: 10,
-    padding: '0 12px',
-  },
-  searchInput: {
-    flex: 1,
-    background: 'transparent',
-    border: 'none',
-    color: '#f1f5f9',
-    padding: '10px 0',
-    fontSize: 13.5,
-    outline: 'none',
-  },
-  filterRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
-  },
-  filterChip: {
-    fontSize: 11.5,
-    fontWeight: 600,
-    padding: '5px 10px',
-    borderRadius: 8,
-    border: '1px solid',
-    cursor: 'pointer',
-  },
-  btnPrimario: {
-    width: '100%',
-    marginTop: 12,
-    backgroundColor: '#2563eb',
-    color: '#f8fafc',
-    border: 'none',
-    borderRadius: 10,
-    padding: '11px 14px',
-    fontSize: 13.5,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  btnPrimarioInline: {
-    backgroundColor: '#2563eb',
-    color: '#f8fafc',
-    border: 'none',
-    borderRadius: 10,
-    padding: '10px 14px',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  btnSecundario: {
-    backgroundColor: '#232c3e',
-    color: '#e2e8f0',
-    border: '1px solid #33415c',
-    borderRadius: 10,
-    padding: '9px 12px',
-    fontSize: 12.5,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  btnCobrar: {
-    backgroundColor: '#1f2d46',
-    color: '#93c5fd',
-    border: '1px solid #31476e',
-    borderRadius: 9,
-    padding: '8px 12px',
-    fontSize: 12.5,
-    fontWeight: 600,
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
-  btnGasto: {
-    width: '100%',
-    marginTop: 12,
-    backgroundColor: '#991b1b',
-    color: '#fef2f2',
-    border: '1px solid #b91c1c',
-    borderRadius: 10,
-    padding: '11px 14px',
-    fontSize: 13.5,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  inlineRow: {
-    display: 'flex',
-    gap: 8,
-    alignItems: 'center',
-  },
-  emptyState: {
-    padding: '22px 10px',
-    textAlign: 'center',
-    color: '#7c879c',
-    fontSize: 13,
-  },
-  modalOverlay: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(8, 11, 18, 0.72)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    zIndex: 70,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#181e2b',
-    border: '1px solid #2b374d',
-    borderRadius: 14,
-    padding: 18,
-  },
-  bottomNav: {
-    position: 'fixed',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#161b26',
-    borderTop: '1px solid #262f40',
-    display: 'flex',
-    justifyContent: 'space-around',
-    padding: '8px 8px 10px',
-    zIndex: 40,
-  },
-};
+                                  }
                     
