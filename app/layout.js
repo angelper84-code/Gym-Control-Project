@@ -1,14 +1,14 @@
+import './Globals.css';
+
 export const metadata = {
-  title: 'GymControl Pro',
-  description: 'Gestión inteligente de gimnasios',
+  title: 'Kova Gym',
+  description: 'Control de Acceso y Cobros',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body style={{ margin: 0, fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#0f172a', color: '#f8fafc' }}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
