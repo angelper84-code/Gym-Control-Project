@@ -65,14 +65,17 @@ select {
 }
 
 .kova-brand img {
-  width: 38px;
-  height: 38px;
-  border-radius: 9px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   object-fit: contain;
   background-color: #182235;
   border: 1px solid var(--border);
   padding: 3px;
   flex-shrink: 0;
+  overflow: hidden;
+  font-size: 0;
+  color: transparent;
 }
 
 .kova-brand-title {
@@ -142,25 +145,27 @@ select {
   border-radius: 9px;
   padding: 8px 10px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .kova-rate-label {
   font-size: 11px;
   color: var(--text-muted);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .kova-rate-input {
-  width: 100%;
+  width: 84px;
   min-width: 0;
-  padding: 7px 9px;
+  padding: 5px 7px;
   border-radius: 7px;
   border: 1px solid var(--border);
   background-color: var(--bg-card);
   color: var(--text-main);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .kova-main {
@@ -447,7 +452,14 @@ select {
     border-right: none;
     border-bottom: 1px solid var(--border);
     padding: 10px 12px;
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .kova-sidebar > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   .kova-nav {
@@ -463,6 +475,34 @@ select {
     padding: 6px 4px;
     font-size: 10px;
     text-align: center;
+  }
+
+  .kova-sidebar-footer {
+    border-top: none;
+    padding-top: 2px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .kova-rate-box {
+    flex: 1;
+    min-width: 170px;
+    padding: 5px 8px;
+    gap: 5px;
+  }
+
+  .kova-rate-input {
+    width: 72px;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .kova-sidebar-footer .kova-btn {
+    padding: 6px 8px;
+    font-size: 11px;
   }
 
   .kova-main {
@@ -488,3 +528,4 @@ select {
     font-size: 17px;
   }
   }
+  
