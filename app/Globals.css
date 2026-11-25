@@ -37,44 +37,34 @@ svg {
   flex-shrink: 0;
 }
 
-/* Barra superior Kova Gym */
-.kova-header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background-color: rgba(11, 22, 34, 0.96);
-  border-bottom: 1px solid #1b2f44;
-  backdrop-filter: blur(8px);
-}
-
-.kova-header-inner {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 12px 16px;
+/* Estructura general con barra lateral */
+.kova-shell {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
 }
 
-.kova-header-top {
+.kova-sidebar {
+  background-color: #0b1622;
+  border-bottom: 1px solid #1b2f44;
+  padding: 14px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .kova-brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #16283b;
 }
 
 .kova-brand-title {
   margin: 0;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: -0.01em;
   color: #f4f8fc;
 }
 
@@ -86,30 +76,28 @@ svg {
 
 .kova-nav {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 2px;
 }
 
 .kova-nav-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
+  gap: 8px;
+  padding: 8px 11px;
   border-radius: 7px;
   border: 1px solid transparent;
   background-color: transparent;
   color: #9bb0c4;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
-  white-space: nowrap;
+  text-align: left;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .kova-nav-btn:hover {
-  background-color: #132537;
-  color: #e6edf5;
+  background-color: #122334;
+  color: #f1f5f9;
 }
 
 .kova-nav-btn.is-active {
@@ -118,22 +106,23 @@ svg {
   color: #ffffff;
 }
 
-.kova-toolbar {
+.kova-sidebar-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 8px;
-  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid #16283b;
 }
 
 .kova-rate-box {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  background-color: #112030;
+  background-color: #0e1c2a;
   border: 1px solid #1e354d;
   border-radius: 7px;
-  padding: 4px 6px 4px 10px;
+  padding: 6px 8px;
   font-size: 12px;
 }
 
@@ -143,11 +132,11 @@ svg {
 }
 
 .kova-rate-input {
-  width: 68px;
+  width: 72px;
   background-color: #09131d;
   border: 1px solid #243e59;
   border-radius: 5px;
-  padding: 4px 7px;
+  padding: 4px 6px;
   font-size: 12.5px;
   font-weight: 600;
   color: #f8fafc;
@@ -158,14 +147,45 @@ svg {
   border-color: #38bdf8;
 }
 
-/* Contenedor principal */
+/* Contenido principal al lado de la barra lateral en escritorio */
 .kova-main {
-  max-width: 1240px;
+  flex: 1;
+  min-width: 0;
+  max-width: 1280px;
+  width: 100%;
   margin: 0 auto;
   padding: 18px 16px 40px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .kova-shell {
+    flex-direction: row;
+  }
+  .kova-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 245px;
+    flex-shrink: 0;
+    border-bottom: none;
+    border-right: 1px solid #1b2f44;
+    padding: 18px 14px;
+    justify-content: space-between;
+  }
+  .kova-nav {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .kova-nav-btn {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .kova-main {
+    padding: 22px 24px 44px;
+  }
 }
 
 /* Tarjetas y superficies */
@@ -308,11 +328,6 @@ svg {
 }
 
 @media (min-width: 1024px) {
-  .kova-header-inner {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
   .kova-grid-kpi {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -472,5 +487,4 @@ svg {
   to {
     transform: rotate(360deg);
   }
-  }
-    
+}
