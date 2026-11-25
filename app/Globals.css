@@ -1,60 +1,452 @@
+:root {
+  --bg-app: #0c111d;
+  --bg-sidebar: #111827;
+  --bg-card: #161f33;
+  --bg-subtle: #1e293b;
+  --bg-input: #0f172a;
+  --border: #283548;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --sky: #38bdf8;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  background-color: #0b0f17;
-  color: #f1f5f9;
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+  color: inherit;
 }
 
 .kova-shell {
   display: flex;
   min-height: 100vh;
-  background-color: #0b0f17;
-  color: #f1f5f9;
+  background-color: var(--bg-app);
+  color: var(--text-main);
 }
 
 .kova-sidebar {
-  width: 240px;
-  background-color: #111827;
-  border-right: 1px solid #283548;
+  width: 260px;
+  flex-shrink: 0;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
   padding: 16px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 16px;
+}
+
+.kova-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kova-brand img {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.kova-brand-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.kova-brand-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kova-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kova-nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background-color: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.kova-nav-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.kova-nav-btn.is-active,
+.kova-nav-btn:hover {
+  background-color: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: #ffffff;
+}
+
+.kova-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.kova-rate-box {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kova-rate-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.kova-rate-input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  font-size: 14px;
 }
 
 .kova-main {
   flex: 1;
-  padding: 20px;
+  min-width: 0;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .kova-card {
-  background-color: #161f30;
-  border: 1px solid #283548;
-  border-radius: 12px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
   padding: 16px;
 }
 
-.kova-btn {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #334155;
-  background-color: #1e293b;
-  color: #f1f5f9;
-  cursor: pointer;
+.kova-card-subtle {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.kova-grid-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kova-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kova-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.kova-kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 6px;
+  color: var(--text-main);
+}
+
+.kova-kpi-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
 }
 
 .kova-input,
 .kova-select {
   width: 100%;
-  padding: 8px 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-input);
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+.kova-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.kova-search-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.kova-search-input {
+  padding-left: 36px;
+}
+
+.kova-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background-color: var(--bg-subtle);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kova-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.kova-btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.kova-btn-success {
+  background-color: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+}
+
+.kova-btn-sm {
+  padding: 6px 10px;
+  font-size: 12px;
   border-radius: 8px;
-  border: 1px solid #334155;
-  background-color: #0f172a;
-  color: #f1f5f9;
-  box-sizing: border-box;
+}
+
+.kova-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.kova-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.kova-table th,
+.kova-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.kova-table th {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.kova-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.kova-badge-ok {
+  background-color: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+}
+
+.kova-badge-warn {
+  background-color: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+}
+
+.kova-badge-danger {
+  background-color: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+}
+
+.kova-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(2, 6, 23, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.kova-modal-box {
+  width: 100%;
+  max-width: 520px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.kova-toast {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--primary);
+  color: var(--text-main);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 60;
+}
+
+.kova-text-muted {
+  color: var(--text-muted);
+}
+
+.kova-text-sky {
+  color: var(--sky);
+}
+
+.kova-text-emerald {
+  color: #34d399;
+}
+
+.kova-text-amber {
+  color: #fbbf24;
+}
+
+.kova-text-rose {
+  color: #f87171;
+}
+
+.text-xs {
+  font-size: 12px;
+}
+
+.text-sm {
+  font-size: 14px;
+}
+
+.text-base {
+  font-size: 16px;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.text-right {
+  text-align: right;
+}
+
+@keyframes kova-spin {
+  to {
+    transform: rotate(360deg);
   }
+}
+
+.kova-spin {
+  animation: kova-spin 0.9s linear infinite;
+}
+
+@media (max-width: 900px) {
+  .kova-shell {
+    flex-direction: column;
+  }
+
+  .kova-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kova-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .kova-nav-btn {
+    justify-content: center;
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+
+  .kova-grid-kpi,
+  .kova-grid-2 {
+    grid-template-columns: 1fr;
+  }
+    }
