@@ -2,7 +2,7 @@ import './Globals.css';
 
 export const metadata = {
   title: 'Kova Gym',
-  description: 'Control de Acceso y Cobros',
+  description: 'Control de Acceso y cobros',
 };
 
 export default function RootLayout({ children }) {
